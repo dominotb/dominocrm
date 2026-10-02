@@ -1,0 +1,1 @@
+import {Placeholder} from '@/components/ModulePage';export default function Page(){return <Placeholder title="Nhân sự & phân quyền" desc="RBAC hỗ trợ nhiều chức vụ trên một tài khoản và quyền tùy chỉnh."/>}

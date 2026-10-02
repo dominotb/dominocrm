@@ -1,0 +1,1 @@
+import {Placeholder} from '@/components/ModulePage';export default function Page(){return <Placeholder title="Lead & chất lượng" desc="Mess → Tag Meta → Lead → Khách hàng, giữ attribution tới Campaign / Ad Set / Ad."/>}

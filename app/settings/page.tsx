@@ -1,0 +1,1 @@
+import {Placeholder} from '@/components/ModulePage';export default function Page(){return <Placeholder title="Cài đặt" desc="Kết nối Supabase, Meta Business, tài khoản quảng cáo và cấu hình đồng bộ."/>}
