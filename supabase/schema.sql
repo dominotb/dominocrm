@@ -84,6 +84,7 @@ create table if not exists daily_manual_reports(id uuid primary key default gen_
 alter table daily_manual_reports add column if not exists amount numeric(14,0) check(amount>=0);
 alter table daily_manual_reports add column if not exists messages bigint check(messages>=0);
 alter table daily_manual_reports alter column content drop not null;
+alter table daily_manual_reports drop constraint if exists daily_manual_reports_content_check;
 create index if not exists daily_manual_reports_date_idx on daily_manual_reports(report_date desc);
 alter table daily_manual_reports enable row level security;
 revoke all on table daily_manual_reports from anon,authenticated;
