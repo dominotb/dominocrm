@@ -29,6 +29,7 @@ type LeadQualityRecord = {
   status?: string | null;
   segment?: string | null;
   scene_code?: string | null;
+  quote_value?: number | string | null;
 };
 
 type CustomerSourceRecord = {customer_id: string | null; campaign_id: string | null; adset_id: string | null; ad_id: string | null};
@@ -229,10 +230,10 @@ function normalizeCampaignDaily(metrics: MetricRecord[]) {
 async function loadLeadQuality(supabase: ReturnType<typeof createServiceClient>, sinceDate: string) {
   let result: {data: LeadQualityRecord[] | null; error: {message: string} | null} = await supabase
     .from('crm_leads')
-    .select('id,created_at,customer_id,source,quality,status,segment,scene_code')
+    .select('id,created_at,customer_id,source,quality,status,segment,scene_code,quote_value')
     .gte('created_at', `${sinceDate}T00:00:00`) as {data: LeadQualityRecord[] | null; error: {message: string} | null};
 
-  if (result.error && ['quality', 'segment', 'scene_code'].some((column) => result.error?.message.includes(column))) {
+  if (result.error && ['quality', 'segment', 'scene_code', 'quote_value'].some((column) => result.error?.message.includes(column))) {
     result = await supabase
       .from('crm_leads')
       .select('id,created_at,customer_id,source,status')
@@ -295,7 +296,7 @@ async function loadChannelMessages(supabase: ReturnType<typeof createServiceClie
 function summarizeLeadQuality(leads: LeadQualityRecord[]) {
   const summary = {
     total: leads.length, qualified: 0, reviewing: 0, unqualified: 0,
-    fanpage: 0, fanpageQualified: 0, contracts: 0, fanpageContracts: 0, tiktok: 0, youtube: 0, website: 0,
+    fanpage: 0, fanpageQualified: 0, contracts: 0, fanpageContracts: 0, revenue: 0, tiktok: 0, youtube: 0, website: 0,
   };
 
   for (const lead of leads) {
@@ -306,6 +307,7 @@ function summarizeLeadQuality(leads: LeadQualityRecord[]) {
     if (lead.source === 'Website') summary.website += 1;
     if (lead.status === 'Chốt hợp đồng') {
       summary.contracts += 1;
+      summary.revenue += money(lead.quote_value);
       if (lead.source === 'Fanpage') summary.fanpageContracts += 1;
     }
     if (quality === 'Đạt chất lượng') summary.qualified += 1;
@@ -356,7 +358,7 @@ function emptyData(connected: boolean, error?: string): DashboardData {
     ads: [],
     daily: [],
     campaignDaily: [],
-    leadQuality: {total: 0, qualified: 0, reviewing: 0, unqualified: 0, fanpage: 0, fanpageQualified: 0, contracts: 0, fanpageContracts: 0, tiktok: 0, youtube: 0, website: 0},
+    leadQuality: {total: 0, qualified: 0, reviewing: 0, unqualified: 0, fanpage: 0, fanpageQualified: 0, contracts: 0, fanpageContracts: 0, revenue: 0, tiktok: 0, youtube: 0, website: 0},
     leadDaily: [],
     channelMessages: [],
     leadAttributes: [],

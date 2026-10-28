@@ -1,19 +1,21 @@
 'use client';
 
 import {useMemo, useState} from 'react';
-import {ArrowUpRight, ChevronRight, FileCheck2, Filter, MessageSquare, Phone, Target, Users, WalletCards} from 'lucide-react';
+import {CircleDollarSign, FileCheck2, Filter, MessageSquare, Phone, Target, Users, WalletCards} from 'lucide-react';
 import {Area, Bar, CartesianGrid, ComposedChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import type {DashboardData} from '@/lib/data-model';
 import {fmt} from '@/lib/data-model';
 
 export default function Dashboard({data}: {data: DashboardData}) {
   const [range, setRange] = useState('30 ngày');
-  const filteredData = useMemo(() => filterDashboardData(data, range), [data, range]);
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const filteredData = useMemo(() => filterDashboardData(data, range, customFrom, customTo), [data, range, customFrom, customTo]);
   const cards = [
     ['Đã chi', fmt(filteredData.totals.spend), data.connected ? 'Chỉ tính quảng cáo Fanpage' : 'Chưa kết nối DB', WalletCards],
     ['Tin nhắn', String(filteredData.totals.messages), 'Tin nhắn từ quảng cáo Fanpage', MessageSquare],
     ['Lead', String(filteredData.leadQuality.fanpage), `${filteredData.leadQuality.fanpageQualified} lead Fanpage đạt chất lượng`, Users],
-    ['CPL', filteredData.totals.cpl ? fmt(filteredData.totals.cpl) : '0 ₫', 'Chi phí Fanpage / lead Fanpage', Target],
+    ['Doanh thu', fmt(filteredData.leadQuality.revenue), 'Từ báo giá của lead đã chốt hợp đồng', CircleDollarSign],
   ] as const;
   const avgMessageCost = filteredData.totals.messages ? filteredData.totals.spend / filteredData.totals.messages : 0;
   const messageToPhoneRate = filteredData.totals.messages ? (filteredData.leadQuality.fanpage / filteredData.totals.messages) * 100 : 0;
@@ -30,9 +32,9 @@ export default function Dashboard({data}: {data: DashboardData}) {
   return <>
     <section className="toolbar">
       <div className="range">
-        {['Hôm nay', '7 ngày', '30 ngày'].map((x) => <button type="button" aria-pressed={range === x} onClick={() => setRange(x)} className={range === x ? 'selected' : ''} key={x}>{x}</button>)}
+        {['Hôm nay', 'Tuần này', 'Tháng này', '30 ngày', 'Tùy chọn'].map((x) => <button type="button" aria-pressed={range === x} onClick={() => setRange(x)} className={range === x ? 'selected' : ''} key={x}>{x}</button>)}
       </div>
-      <button className="filter"><Filter size={16}/> Bộ lọc</button>
+      {range === 'Tùy chọn' ? <div className="custom-range"><label>Từ <input aria-label="Từ ngày" type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)}/></label><label>Đến <input aria-label="Đến ngày" type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)}/></label></div> : <span className="filter"><Filter size={16}/> Khoảng thời gian</span>}
     </section>
 
     {data.error ? <div className="notice">{data.error}</div> : null}
@@ -85,35 +87,25 @@ export default function Dashboard({data}: {data: DashboardData}) {
       <article className="card quality">
         <div className="section-title"><div><h2>Chất lượng Lead</h2><p>{filteredData.leadQuality.total} lead được ghi nhận</p></div></div>
         <div className="quality-ring"><div style={{background: `conic-gradient(#202327 0 ${qualifiedRate}%,#eceef0 ${qualifiedRate}%)`}}><strong>{qualifiedRate}%</strong><span>Đạt chất lượng</span></div></div>
-        <div className="quality-row"><span><i className="dot good"/>Đạt chất lượng</span><b>{filteredData.leadQuality.qualified}</b></div>
-        <div className="quality-row"><span><i className="dot mid"/>Đang đánh giá</span><b>{filteredData.leadQuality.reviewing}</b></div>
-        <div className="quality-row"><span><i className="dot bad"/>Không phù hợp</span><b>{filteredData.leadQuality.unqualified}</b></div>
+        <div className="quality-row"><span><i className="dot good"/>Đạt chất lượng</span><b>{filteredData.leadQuality.qualified} · {formatPercent(qualityPercent(filteredData.leadQuality.qualified, filteredData.leadQuality.total))}%</b></div>
+        <div className="quality-row"><span><i className="dot mid"/>Đang đánh giá</span><b>{filteredData.leadQuality.reviewing} · {formatPercent(qualityPercent(filteredData.leadQuality.reviewing, filteredData.leadQuality.total))}%</b></div>
+        <div className="quality-row"><span><i className="dot bad"/>Không phù hợp</span><b>{filteredData.leadQuality.unqualified} · {formatPercent(qualityPercent(filteredData.leadQuality.unqualified, filteredData.leadQuality.total))}%</b></div>
       </article>
-    </section>
-
-    <section className="card table-card">
-      <div className="section-title"><div><h2>Campaign</h2><p>Hiệu quả theo chiến dịch</p></div><a>Xem tất cả <ArrowUpRight size={15}/></a></div>
-      <div className="desktop-table">
-        <table>
-          <thead><tr><th>Chiến dịch</th><th>Trạng thái</th><th>Chi tiêu</th><th>Mess</th><th>Lead</th><th>Lead đạt</th><th>CPL</th><th/></tr></thead>
-          <tbody>{filteredData.campaigns.map((c) => <tr key={c.id}><td><b>{c.name}</b></td><td><span className={'status ' + (c.status === 'ACTIVE' ? 'on' : 'off')}>{c.status}</span></td><td>{fmt(c.spend)}</td><td>{c.messages}</td><td>{c.leads}</td><td>{c.qualified}</td><td>{fmt(c.cpl)}</td><td><ChevronRight size={17}/></td></tr>)}</tbody>
-        </table>
-      </div>
-      <div className="mobile-campaigns">
-        {filteredData.campaigns.map((c) => <div className="campaign-card" key={c.id}><div><b>{c.name}</b><span className={'status ' + (c.status === 'ACTIVE' ? 'on' : 'off')}>{c.status}</span></div><div className="campaign-stats"><span>Chi tiêu<b>{fmt(c.spend)}</b></span><span>Mess<b>{c.messages}</b></span><span>Lead<b>{c.leads}</b></span><span>CPL<b>{fmt(c.cpl)}</b></span></div></div>)}
-      </div>
     </section>
   </>;
 }
 
-function filterDashboardData(data: DashboardData, range: string) {
-  const days = range === 'Hôm nay' ? 1 : range === '7 ngày' ? 7 : 30;
+function filterDashboardData(data: DashboardData, range: string, customFrom: string, customTo: string) {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - (days - 1));
-  const startDate = localDateKey(start);
-  const daily = data.daily.filter((row) => row.date >= startDate);
-  const selectedMetrics = data.campaignDaily.filter((row) => row.date >= startDate);
+  if (range === 'Tuần này') start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  else if (range === 'Tháng này') start.setDate(1);
+  else if (range !== 'Tùy chọn') start.setDate(start.getDate() - 29);
+  const startDate = range === 'Tùy chọn' ? (customFrom || '0000-01-01') : localDateKey(start);
+  const endDate = range === 'Tùy chọn' ? (customTo || '9999-12-31') : localDateKey(new Date());
+  const inRange = (date: string) => date >= startDate && date <= endDate;
+  const daily = data.daily.filter((row) => inRange(row.date));
+  const selectedMetrics = data.campaignDaily.filter((row) => inRange(row.date));
   const byCampaign = new Map<string, {spend: number; messages: number; leads: number; qualified: number}>();
 
   for (const metric of selectedMetrics) {
@@ -134,12 +126,12 @@ function filterDashboardData(data: DashboardData, range: string) {
     {spend: 0, messages: 0, leads: 0, qualified: 0, cpl: 0},
   );
 
-  const leadQuality = data.leadDaily.filter((row) => row.date >= startDate).reduce((sum, row) => ({
+  const leadQuality = data.leadDaily.filter((row) => inRange(row.date)).reduce((sum, row) => ({
     total: sum.total + row.total, qualified: sum.qualified + row.qualified, reviewing: sum.reviewing + row.reviewing,
     unqualified: sum.unqualified + row.unqualified, fanpage: sum.fanpage + row.fanpage, fanpageQualified: sum.fanpageQualified + row.fanpageQualified, contracts: sum.contracts + row.contracts,
-    fanpageContracts: sum.fanpageContracts + row.fanpageContracts, tiktok: sum.tiktok + row.tiktok,
+    fanpageContracts: sum.fanpageContracts + row.fanpageContracts, revenue: sum.revenue + row.revenue, tiktok: sum.tiktok + row.tiktok,
     youtube: sum.youtube + row.youtube, website: sum.website + row.website,
-  }), {total: 0, qualified: 0, reviewing: 0, unqualified: 0, fanpage: 0, fanpageQualified: 0, contracts: 0, fanpageContracts: 0, tiktok: 0, youtube: 0, website: 0});
+  }), {total: 0, qualified: 0, reviewing: 0, unqualified: 0, fanpage: 0, fanpageQualified: 0, contracts: 0, fanpageContracts: 0, revenue: 0, tiktok: 0, youtube: 0, website: 0});
   totals.leads = leadQuality.total;
   totals.qualified = leadQuality.qualified;
   totals.cpl = leadQuality.fanpage ? totals.spend / leadQuality.fanpage : 0;
@@ -147,13 +139,17 @@ function filterDashboardData(data: DashboardData, range: string) {
     Fanpage: totals.messages, Tiktok: leadQuality.tiktok, Youtube: leadQuality.youtube, Website: leadQuality.website,
   };
   const importedMessages: Record<string, number> = {};
-  for (const row of data.channelMessages) if (row.date >= startDate) importedMessages[row.source] = (importedMessages[row.source] || 0) + row.messages;
+  for (const row of data.channelMessages) if (inRange(row.date)) importedMessages[row.source] = (importedMessages[row.source] || 0) + row.messages;
   for (const [source, messages] of Object.entries(importedMessages)) messagesBySource[source] = messages;
   const totalMessages = Object.values(messagesBySource).reduce((sum, value) => sum + value, 0);
-  const visibleAttributes = data.leadAttributes.filter((row) => row.date >= startDate);
+  const visibleAttributes = data.leadAttributes.filter((row) => inRange(row.date));
   const segmentDistribution = distribution(visibleAttributes.map((row) => row.segment).filter(Boolean));
   const sceneCodeDistribution = distribution(visibleAttributes.map((row) => row.sceneCode).filter(Boolean));
   return {daily, campaigns, totals, leadQuality, messagesBySource, totalMessages, segmentDistribution, sceneCodeDistribution};
+}
+
+function qualityPercent(count: number, total: number) {
+  return total ? count / total * 100 : 0;
 }
 
 function DistributionCard({title, subtitle, rows}: {title: string; subtitle: string; rows: {label: string; count: number; percent: number}[]}) {

@@ -49,6 +49,7 @@ export type LeadQualitySummary = {
   fanpageQualified: number;
   contracts: number;
   fanpageContracts: number;
+  revenue: number;
   tiktok: number;
   youtube: number;
   website: number;
