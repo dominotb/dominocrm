@@ -1,10 +1,11 @@
 'use client';
 
 import {useMemo, useState} from 'react';
-import {CircleDollarSign, FileCheck2, Filter, MessageSquare, Phone, Target, Users, WalletCards} from 'lucide-react';
+import {CircleDollarSign, FileCheck2, FileDown, Filter, MessageSquare, Phone, Target, Users, WalletCards} from 'lucide-react';
 import {Area, Bar, CartesianGrid, ComposedChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis} from 'recharts';
 import type {DashboardData} from '@/lib/data-model';
 import {fmt} from '@/lib/data-model';
+import {downloadDashboardDocx} from '@/lib/dashboard-docx';
 
 export default function Dashboard({data}: {data: DashboardData}) {
   const [range, setRange] = useState('30 ngày');
@@ -35,6 +36,15 @@ export default function Dashboard({data}: {data: DashboardData}) {
         {['Hôm nay', 'Tuần này', 'Tháng này', '30 ngày', 'Tùy chọn'].map((x) => <button type="button" aria-pressed={range === x} onClick={() => setRange(x)} className={range === x ? 'selected' : ''} key={x}>{x}</button>)}
       </div>
       {range === 'Tùy chọn' ? <div className="custom-range"><label>Từ <input aria-label="Từ ngày" type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)}/></label><label>Đến <input aria-label="Đến ngày" type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)}/></label></div> : <span className="filter"><Filter size={16}/> Khoảng thời gian</span>}
+      <button type="button" className="primary dashboard-export" onClick={() => downloadDashboardDocx({
+        period: range === 'Tùy chọn' ? `${customFrom || 'Tất cả'} – ${customTo || 'Hiện tại'}` : range,
+        spend: fmt(filteredData.totals.spend), messages: filteredData.totals.messages.toLocaleString('vi-VN'),
+        fanpageLeads: filteredData.leadQuality.fanpage.toLocaleString('vi-VN'), totalLeads: filteredData.leadQuality.total.toLocaleString('vi-VN'),
+        qualified: filteredData.leadQuality.qualified.toLocaleString('vi-VN'), qualifiedPercent: `${formatPercent(qualityPercent(filteredData.leadQuality.qualified, filteredData.leadQuality.total))}%`,
+        reviewing: filteredData.leadQuality.reviewing.toLocaleString('vi-VN'), reviewingPercent: `${formatPercent(qualityPercent(filteredData.leadQuality.reviewing, filteredData.leadQuality.total))}%`,
+        unqualified: filteredData.leadQuality.unqualified.toLocaleString('vi-VN'), unqualifiedPercent: `${formatPercent(qualityPercent(filteredData.leadQuality.unqualified, filteredData.leadQuality.total))}%`,
+        revenue: fmt(filteredData.leadQuality.revenue),
+      })}><FileDown size={16}/> Xuất báo cáo DOCX</button>
     </section>
 
     {data.error ? <div className="notice">{data.error}</div> : null}
